@@ -1,0 +1,6 @@
+"barcode","spot","cluster","TotalRDs","array_row","array_col","RreadC","MreadC","Treads","groups"
+"CAGAACTTAGCCCTCT-1","spot212","Cluster 4",5019,53,85,0,2,2,"G2"
+"CCGTAGGGTTGTTTAC-1","spot259","Cluster 3",10758,60,104,0,4,4,"G4"
+"CCTCCTGTTGTGTCGT-1","spot266","Cluster 3",19768,62,96,0,5,5,"G5"
+"TGATGTCAATTAAGTG-1","spot662","Cluster 3",8780,59,103,0,3,3,"G3"
+"TTACACGATCTGCGAC-1","spot699","Cluster 4",3699,62,110,0,2,2,"G2"

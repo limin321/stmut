@@ -1,0 +1,6 @@
+Hugo_Symbol	Chromosome	Start_Position	End_Position	Variant_Classification	Variant_Type	Reference_Allele	Tumor_Seq_Allele2	dbSNP_RS	dbSNP_Val_Status	Genome_Change	Protein_Change	COSMIC_overlapping_mutations
+dummy	1	979459	979459	dummy	dummy	C	T	dummy	dummy	dummy	dummy	dummy
+dummy	1	1048922	1048922	dummy	dummy	T	C	dummy	dummy	dummy	dummy	dummy
+dummy	1	1091327	1091327	dummy	dummy	C	A	dummy	dummy	dummy	dummy	dummy
+dummy	1	1426150	1426150	dummy	dummy	C	T	dummy	dummy	dummy	dummy	dummy
+dummy	1	1426253	1426253	dummy	dummy	G	A	dummy	dummy	dummy	dummy	dummy

@@ -1,0 +1,11 @@
+Chr	hg38_start	hg38_end	Ref	Mut	Depth	Reads	TumorRef	TumorAlt	TumorShift	ChromSwitch	Order	hg19_start	hg19_end
+chr1	979459	979459	C	T	136	.$,$,$TtT.tttTtt,TTT..TTT,..Tt.,TT,T.T.TT.T...TT.,,TT...T.T..T..TT.TTTT.T.TT.T..T.TT..T.TT.....T.TTTTTT.TTT..tT..T.TT.TTTTTT.T.TT.TT.T...^].^].	62	74	0.0441176470588235	1	1	914839	914839
+chr1	1048922	1048922	T	C	55	C$..,Ccc,cCcCCcc,C,.CccCC.CC,CCC.C,,,.CcCc...cC..CCCCC.C	20	35	0.136363636363636	0	2	984302	984302
+chr1	1091327	1091327	C	A	124	AAA.A...,..A..A....A...AA..AAA,.A...A......A.A,.A.A.aA..A....AAA..A..A.AA....AA......A...a..........AA.....a..A.....AAAAA...	83	41	0.169354838709677	0	3	1026707	1026707
+chr1	1426150	1426150	C	T	37	.$tt.tt,ttt,tTTT,,tTT.tttT.tT,T.Tt.T..	13	24	0.148648648648649	0	4	1361530	1361530
+chr1	1426253	1426253	G	A	18	,,aaa,.Aa.AaA.AAA^].	7	11	0.111111111111111	0	5	1361633	1361633
+chr1	1426261	1426261	C	T	17	tt,.Tt.TT.TTT....	8	9	0.0294117647058824	0	6	1361641	1361641
+chr1	1439454	1439454	A	G	38	G,,.,,.....GGgG....,.....GG.G.G.G...G.	27	11	0.210526315789474	0	7	1374834	1374834
+chr1	1455495	1455495	C	T	251	T$T$.$T$,$,$TTttt.t,.,.TTTTtT,.T.,,tt.....,,,t....t..tt,,TT.,T..,,..T,.TTT,,tt,,t,,Tt.,,T..t..T,.t,TTT,.T.,t,T,,...,..,,..T.,,TT.t..t.,..T,...,t,..,T.,tT.t.T..TTT.,..TTtt....tTT.,,....T,T.T..TTt,,.TT..T.....tTT.t.....,,.tT...TT,TT.TT,....T,,T..T.T..T.TT.T.^U.	156	95	0.121513944223108	0	8	1390875	1390875
+chr1	1471992	1471992	T	C	141	.$,CC..,c,,,,.,.,.,,..c,CC.c,ccc,c,,,...,,.c.Cc,,,..,,.CCcC.,,,,.Cc,,,.c,,c,.,c,.,,,,.C,cC.,C,..,..c..,...c.c.cc.C.C.C..,,.CC,CC....C.,C...C..	99	42	0.202127659574468	0	9	1407372	1407372
+chr1	1535427	1535427	C	T	222	.$,$.T,T,T.TTtt,,T.,,t,T,,tt,T.,...,tT,..TT...t,T..T,,t,T,,,T.,,,,,Ttt..t,,,...,,T,,..TT,TTt,tTTT,.T..TT.TttTt,,t..T..T,,T.T.,.TT,..,tTTTT..TTT,.T.T.t.,..T.TT..tT..,...T......t..T..T,..,TTTT.T.TTT,.tT.TT..T.TTt.T.TT.,..,TTT.	128	94	0.0765765765765766	0	10	1470807	1470807
