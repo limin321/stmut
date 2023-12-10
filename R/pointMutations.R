@@ -472,3 +472,41 @@ spaPointMutation <- function(files1, files2, data1, data2, path, path1) {
     stop("Please make sure all inputs have the same number of spots or cells!!")
   }
 }
+
+
+
+splitSpot1 <- function(file) {
+  if (!file.exists("CNVs/spotIndex")) {
+    flog.info("Creating folders: CNVs/spotIndex")
+    dir.create("CNVs/spotIndex", recursive = TRUE)
+  } else {
+    flog.warn("The path 'CNVs/spotIndex' exists, please clean your working directory and restart.")
+    stop("File pathes conflicts")
+  }
+
+  if (!file.exists("CNVs/txt")) {
+    flog.info("Creating folders: CNVs/txt")
+    dir.create("CNVs/txt", recursive = TRUE)
+  } else {
+    flog.warn("The path 'CNVs/txt' exists, please clean your working directory and restart.")
+    stop("File pathes conflicts")
+  }
+
+  if ((ncol(file) - 1) < 1000) {
+    flog.info("It has less than 1000 spots. The first spot is named spot000")
+    n <- 3
+  } else {
+    flog.info("It has >= 1000 spots. The first spot is named spot00..00")
+    n <- nchar(ncol(file) - 1)
+  }
+
+  for (i in 2:ncol(file)) {
+    data <- file[, c(1, i)]
+    # idx <- stri_pad_left(i - 2, n, 0)
+    idx <- i -1
+    barcode <- names(data)[2]
+    barcode <- stringr::str_replace(barcode, "\\.1", "-1")
+    write.table(barcode, file = paste0("./CNVs/spotIndex/spot", idx, ".txt"), row.names = FALSE, col.names = FALSE, quote = FALSE)
+    write.table(data, file = paste0("./CNVs/txt/spot", idx, ".txt"), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+  }
+}

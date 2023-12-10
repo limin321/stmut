@@ -383,12 +383,6 @@ groupSpots <- function(data, Treads = 5000, NumSpt = 8) {
 # }
 
 
-
-
-
-
-
-
 #' Generating new_spots_feature_bc.csv after calling groupSpots function.
 #'
 #' @param df1 dataframe of spots to be grouped
@@ -750,10 +744,12 @@ spotsGrouped <- function(df1, Treads = 5000, NumSpt = 8, data, locpath) {
   }
 
 
+  spotGroupsum = r21 #saved for later merging with newSpotsum
+
   for (i in 1:length(r23)) {
     name <- paste0("spot", i)
     bc <- r23[i]
-    bc <- str_replace(bc, ".1", "-1")
+    bc <- str_replace(bc, "\\.1", "-1")
     write.table(bc, file = paste0(path1, name, ".txt"), col.names = FALSE, quote = FALSE, row.names = FALSE) # new spot index file
     expSpt <- r22[, c(1, (i + 1))]
     write.table(expSpt, file = paste0(path2, name, ".txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE) # new spot gene expr txt file.
@@ -761,21 +757,21 @@ spotsGrouped <- function(df1, Treads = 5000, NumSpt = 8, data, locpath) {
   }
 
   v1 <- paste0("spot", seq(length(r23)))
-  r21$barcode <- str_replace(r21$barcode, "-1", ".1")
+  r21$barcode <- str_replace(r21$barcode, "-1", "\\.1")
   t2 <- r21 %>% filter(barcode %in% r23) # obtain representative cluster name
   t2$cluster <- gsub(" ", "", t2$cluster)
   data1 <- data.frame(r23, v1)
   colnames(data1) <- c("barcode", "spot")
 
   data2 <- merge(t2, data1, by = "barcode")
-  data2$barcode <- str_replace(data2$barcode, ".1", "-1")
+  data2$barcode <- str_replace(data2$barcode, "\\.1", "-1")
   graphbased <- data2[, c(1, 2)]
   write.csv(graphbased, file = paste0(path, "/CNVs/grpGraph_based.csv"), row.names = FALSE)
 
   loc <- read.csv(locpath, header = FALSE)
-  loc$V1 <- str_replace(loc$V1, "-1", ".1")
+  loc$V1 <- str_replace(loc$V1, "-1", "\\.1")
   loc1 <- loc %>% filter(V1 %in% r23)
-  loc1$V1 <- str_replace(loc1$V1, ".1", "-1")
+  loc1$V1 <- str_replace(loc1$V1, "\\.1", "-1")
   write.table(loc1, file = paste0(path, "/CNVs/tissue_positions_list.csv"), row.names = FALSE, col.names = FALSE, sep = ",", quote = FALSE)
 
   ## convert r22 to numeric
@@ -786,9 +782,94 @@ spotsGrouped <- function(df1, Treads = 5000, NumSpt = 8, data, locpath) {
   files <- list.files(path = paste0(path, "/CNVs/spotIndex"), ".txt", full.names = TRUE, recursive = FALSE)
   p1 <- paste0(path, "/CNVs/tissue_positions_list.csv")
   df1 <- sptBClstRds(files = files, data1 = r22, data2 = graphbased, path = p1)
-  write.csv(df1[[1]], file = paste0(path, "/CNVs/newSpotBcRds.csv"), row.names = FALSE)
-  write.csv(df1[[2]], file = paste0(path, "/CNVs/newSpotSummary.csv"), row.names = FALSE)
+  write.csv(df1[[1]], file = paste0(path, "/CNVs/grouped_spotsBcRds.csv"), row.names = FALSE)
+  write.csv(df1[[2]], file = paste0(path, "/CNVs/grouped_spotSummary.csv"), row.names = FALSE)
+
+  # merge grouped_spotSummary.csv and spotGroupingSummary.csv to get a two cols csv
+  newSpotsum = df1[[2]]
+  spotGroupsum$cluster <- str_replace(spotGroupsum$cluster, " ","")
+  spotGroupsum$cat <- paste0(spotGroupsum$cluster, "_",spotGroupsum$groups)
+  sub <- spotGroupsum %>% filter(barcode %in% newSpotsum$barcode)
+  df3 <- data.frame(CNV_spot_name=character(), Barcodes=character())
+  for (i in 1:nrow(newSpotsum)){
+    spot <- newSpotsum[i,"spot"]
+    bc <- newSpotsum[i,"barcode"]
+    a <- sub[which(sub$barcode == bc),"cat"]
+    subcat <- spotGroupsum %>% filter(cat %in% sub[which(sub$barcode == bc),"cat"])
+    bcs <- paste(subcat$barcode, collapse = ",")
+    df3[i,"CNV_spot_name"] = spot
+    df3[i, "Barcodes"] = bcs
+  }
+  df3 <- df3[order(df3$CNV_spot_name),]
+  write.csv(df3, file = paste0(path, "/CNVs/BarcodeLegend.csv"), row.names = FALSE)
 }
+
+#' data1 Original filtered_feature_bc.csv
+#' locpath The tissue_positions_list.csv
+readsGrouped <- function(data1,data2,Treads = 8000, NumSpt=8,locpath){
+  dir.create("./grouped_spots/")
+  setwd(paste0("grouped_spots/"))
+
+  df0 = data2
+  df01 <- df0 %>% filter(TotalRDs >= args$TotalReads) #by default is 5k
+  df02 <- df0 %>% filter(TotalRDs < args$TotalReads)
+  keepbarcodes <- str_replace(df01$barcode,"-1","\\.1") # Not for grouping
+  data11 <- data1[,c("X",keepbarcodes)]
+  data12 <- data1 %>% dplyr::select(-one_of(keepbarcodes)) # spots for grouping
+  df0 = df02
+  data1 = data12
+  locpath <- paste0("../",locpath)
+
+  # only group spots with < 5k reads
+  spotsGrouped(df1=df0, Treads = Treads, NumSpt=NumSpt, data=data1, locpath=locpath)
+
+  # update newSptGenExp.csv
+  exp1 <- read.csv("./CNVs/newSptsGenExp.csv")
+  names(exp1)[1] <- "X"
+  exp2 <- merge(exp1,data11, by="X")
+  write.csv(exp2, file = "./CNVs/filtered_feature_bc.csv", row.names = FALSE)
+
+  # add ungrouped but > 5k reads spots
+  oldSum <- data2
+  oldSum$cluster <- str_replace(oldSum$cluster, " ", "")
+  old1 <- oldSum %>% filter(oldSum$barcode %in% df01$barcode)
+
+  # update grouped_spotSummary.csv
+  file = data11
+  newdf <- read.csv("./CNVs/grouped_spotsBcRds.csv")
+  ng = nrow(newdf)
+  for (i in 2:ncol(file)) {
+    data <- file[, c(1, i)]
+    idx = i + ng-1
+    barcode <- names(data)[2]
+    barcode <- stringr::str_replace(barcode, "\\.1", "-1")
+    spName <- paste0("spot", idx)
+    write.table(barcode, file = paste0("./CNVs/spotIndex/spot", idx, ".txt"), row.names = FALSE, col.names = FALSE, quote = FALSE)
+    write.table(data, file = paste0("./CNVs/txt/spot", idx, ".txt"), quote = FALSE, sep = "\t", row.names = FALSE, col.names = FALSE)
+    rowN <- match(barcode,df01$barcode)
+    old1[rowN,"spot"] <- spName
+  }
+
+  # add ungrouped spots to grouped_spotSummary.csv file
+  newSum <- read.csv("./CNVs/grouped_spotSummary.csv")
+  newSum <- rbind(newSum, old1)
+  write.csv(newSum, file = "./CNVs/grouped_spotSummary.csv", row.names = FALSE)
+
+  # update BarcodeLegend.csv
+  cnvSpots <- read.csv("./CNVs/BarcodeLegend.csv")
+  ungroupSpots <- newSum %>% filter(!spot %in% cnvSpots$CNV_spot_name)
+  ungrp1 <- ungroupSpots[, c("spot","barcode")]
+  names(ungrp1) <- names(cnvSpots)
+  cnvspots <- rbind(cnvSpots, ungrp1)
+  write.csv(cnvspots, file = "./CNVs/BarcodeLegend.csv", row.names = FALSE)
+
+  file.remove("./CNVs/newSptsGenExp.csv")
+  file.remove("./CNVs/grpGraph_based.csv")
+  file.remove("./CNVs/grouped_spotsBcRds.csv")
+  file.remove("./CNVs/tissue_positions_list.csv")
+  file.remove("./CNVs/spotGroupingSummary.csv")
+}
+
 
 
 #' Generate a cdt file of sorted CNVs data of spots based on DNAseq CNV signals.
@@ -858,20 +939,33 @@ cnvsorted <- function(data1, cdt, data2, arm, gainLoss, tumorclusters) {
 #' @param data3 The spotSummary file, generated by sptBClstRds()
 #' @param arm Optional. If you don't have DNAseq data. arm is not required. A vector of arms with CNVs signals
 #' @param gainLoss Optional. If you don't have DNAseq data. gainLoss is not required. CNVs signals corresponding to arms, -1 is loss, +1 is gain
+#' @param method1 The distance measure to be used. Check ?dist to see more options.
+#' @param method2 The agglomeration method to be used. Check ?hclust to see more options
 #'
-#' @return A centered cdt file as final CNVs of spots or cells.
+#' @return Five files: CNVs_clustered_heatmap.pdf,CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png,CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png,CNVs_OrganizedByGEcluster_UMIcount.cdt, CNVs_RankedBySimilarityToDNA.cdt.
+#' the CNVs_RankedBySimilarityToDNA.cdt will be generated only when bulk tumor DNA data is provided.
 #' @export
 #'
 
-cnvs <- function(data1, cdt, data2, data3, arm=c(), gainLoss=c()) {
-  stopifnot(is.data.frame(data1), is.data.frame(cdt), is.data.frame(data2))
-
-  if (length(arm) != length(gainLoss)) {
-    stop("arm and gainLoss should have the same length!")
+# method1 is dist method, method2 is hclust method. The ... one or more arguments for heatmap.2x function.
+cnvs <- function(data1, cdt, data2, data3,ncluster=4, arm=c(), gainLoss=c(),method1="canberra", method2 = "complete", ...) {
+  allargs = as.list(sys.call()) #
+  a = length(allargs) # all arguments + one function, its
+  b = length(a[nzchar(names(allargs))]) + 1 # function always have empty names. Here, unamed arguments(empty names) will be filter-out by nzchar()
+  if (a != b) {
+    stop("all arguments must be named!")
+  }else{
+    print("All arguments have names")
   }
 
-  evens <- function(x) subset(x, x %% 2 == 0) # only pick even numbers
+  # evaluate data types
+  stopifnot(is.data.frame(data1), is.data.frame(cdt), is.data.frame(data2))
 
+  # if (length(arm) != length(gainLoss)) {
+  #   stop("arm and gainLoss should have the same length!")
+  # }
+
+  evens <- function(x) subset(x, x %% 2 == 0) # only pick even numbers
   arms <- NULL
   spot <- NULL
   chr <- NULL
@@ -906,134 +1000,523 @@ cnvs <- function(data1, cdt, data2, data3, arm=c(), gainLoss=c()) {
   rows2 <- cdt[-c(1:2), c(2:3)]
   c7 <- cbind(rows2, c6)
 
-  # if NO DNA-seq data, NO NEED to run the sorting based on the bulk-CNV score. Instead, sort the data based on cluster and totalRDs.
+  # When NO-DNAseq data is provided, two things will be done. 1) non-supervised clustering data, by generating a heatmap and dendrogram; 2) clustering based on known clusters and totalRds, by generating clusters-template and chromosome templates.
+  # 2) if NO DNA-seq data, NO NEED to run the sorting based on the bulk-CNV score. Instead, sort the data based on cluster and totalRDs.
+  cnvPlot2(c6 = c6, data3 = data3) # sort by GEcluster and total reads.
+  htp <- cnvPlot3(c7 = c7, ncluster = ncluster,method1=method1, method2 = method2, ...) # sort by clusters
+  save(htp,file = paste0(getwd(), "/CNVs_clustered.Rdata"))
 
-  if (length(arm) ==0){
-    dat2 <- rbind(names(c6), c6) # add spot-name as first row
-    cdt2 <- data.frame(t(dat2))
-
-    #change the first colname to be "spot".
-    name <- colnames(cdt2)
-    colnames(cdt2) <- replace(name, name == "X1","spot" )
-
-    # spot summary file
-    data3$cluster <- stringr::str_remove_all(data3$cluster," ")
-    sum1 <- data3[, c("cluster", "spot", "TotalRDs")] %>% filter(spot %in% cdt2$spot)
-    cdt3 <- merge(sum1, cdt2, by = "spot")
-    cdt3$TotalRDs <- as.numeric(cdt3$TotalRDs)
-    cdt4 <- cdt3[order(cdt3[,2], -cdt3[,3]),] # sort first by cluster column, then by TotalRDs column-decreasing.
-    cdt5 <- data.frame(t(cdt4))
-    colnames(cdt5) <- cdt5[1,]
-    cdt6 <- cdt5[-c(1:3),]
-    df1 <- cdt[-c(1:2),2:3]
-    cdt7 <- cbind(df1, cdt6)
-    write.table(cdt7, file = paste0(getwd(),"/cluster_TotalRDs.cdt"), sep = "\t", row.names = FALSE, col.names = TRUE)
-
-    # 1.1 generating chromosome heatmap of sorted cluster_TotalRDs.cdt for annotating chr locations of cdt file.
-    df2 <- df1
-    df2[c("chr", "loc")] <- str_split_fixed(df2$NAME, ":",2)
-
-    ### Generate chromosome-template cdt file----- For troubleshooting ChromosomeTemplate.png
-    #   df0 <- df2
-    #   df0$chr <- as.numeric(df0$chr)
-    #   df0$value <- rep(0, nrow(df0))
-    #   nums <- evens(1:length(unique(df0$chr)))
-    #   chrs <- unique(df0$chr)[nums] # only pick even number clusters
-    # for (i in 1:nrow(df0)){
-    #   if(df0[i,"chr"] %in% chrs){
-    #     df0[i,"value"] <- 1
-    #   }
-    # }
-    #   df0 <- df0[,c("CLID", "NAME", "value")]
-    # write.table(df0, file =paste0(getwd(), "/ChromosomeTemplate.cdt"), sep = "\t", row.names = FALSE, col.names = TRUE)
-
-    df2 <- dplyr::count(df2,chr)
-    df2$seq <- rep(1, nrow(df2))
-    df2 <- df2[order(as.numeric(df2$chr), decreasing = FALSE),]
-    df2$chr <- as.numeric(df2$chr)
-
-    if (nrow(df2) %% 2 == 0){
-      a = nrow(df2)/2
-      colors <- rep(c("#5A5A5A", "#CCCCCC"), a)
-    } else{
-      a = (nrow(df2) - 1)/2
-      colors <- c("#5A5A5A", rep(c("#CCCCCC","#5A5A5A"), a))
-    }
-
-    ####
-    p1 <- paste0(getwd(), "/ChromosomeTemplate.png")
-    ggplot(df2, aes(x = seq, y=n, fill = factor(chr))) +
-      geom_bar(position = "stack", stat = "identity") +
-      scale_fill_manual(values = colors)+
-      theme_bw() +
-      theme(
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank()
-      )
-    ggsave(p1)
-
-    # 1.2 generating cluster heatmaps of sorted cluster_TotalRDs.cdt
-    NAME <- data.frame(t(cdt5[2,]))
-
-    # ## clusterTemplate.cdt ----- For troubleshooting clusterTemplate image
-    # image <- paste0("IMAGE:", seq(nrow(NAME))-1)
-    # NAME$image <- image
-    # NAME <- NAME[,c("image", "cluster")]
-    # NAME$value <- rep(0, nrow(NAME))
-    #
-    # nums <- evens(1:length(unique(NAME$cluster)))
-    # clst <- unique(NAME$cluster)[nums] # only pick even number clusters
-    # for (i in 1:nrow(NAME)){
-    #   if(NAME[i,"cluster"] %in% clst){
-    #     NAME[i,"value"] <- 1
-    #   }
-    # }
-    # write.table(NAME, file =paste0(getwd(), "/clusterTemplate.cdt"), sep = "\t", row.names = FALSE, col.names = TRUE)
-
-    ## cluster1...clusterN heatmap
-    dat1 <- dplyr::count(NAME, cluster)
-    dat1$seq <- rep(1, nrow(dat1))
-    if (nrow(dat1) %% 2 == 0){
-      a = nrow(dat1)/2
-      colors <- rep(c("#5A5A5A", "#CCCCCC"), a)
-    } else{
-      a = (nrow(dat1) - 1)/2
-      colors <- c("#5A5A5A", rep(c("#CCCCCC","#5A5A5A"), a))
-    }
-
-    ##
-    p2 <- paste0(getwd(), "/ClusterTemplate.png")
-    ggplot(dat1, aes(x = seq, y=n, fill = cluster)) +
-      geom_bar(position = "stack", stat = "identity") +
-      scale_fill_manual(values = colors)+
-      theme_bw() +
-      theme(
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.border = element_blank(),
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.title.x = element_blank(),
-        axis.title.y = element_blank()
-      )
-    ggsave(p2)
-  }else{ # sort the data using bulk CNV score
-    ArmGenSumm <- CtArmGenes(cdt = c7, data = data2)
-    df1 <- ArmGenSumm %>% filter(arms %in% arm) # sort the spots based on the CNV signal found in the bulk data
-    genes <- df1[, "genes"]
-    rs <- df1[, "gene_row"]
-    df <- cdt_filt_sort(cdt = c7, genes = genes, gainLoss = gainLoss, rs = rs)
-    write.table(df, file = paste0(getwd(), "/CNVs.cdt"), sep = "\t", row.names = FALSE, quote = FALSE)
+  if (length(arm) !=0){ # sort the data using bulk CNV score
+    cnvPlot1(c7 = c7, data2 = data2, arm = arm, gainLoss = gainLoss)
+    file.remove("caseCNV_summ.csv")
+    file.remove("permutCNV_summ.csv")
   }
+
+}
+
+
+# DNA bulk data is provided CNVplot1
+cnvPlot1 <- function(c7 = c7, data2 = data2, arm = arm, gainLoss = gainLoss){
+  if (length(arm) != length(gainLoss)) {
+    stop("arm and gainLoss should have the same length!")
+  }
+
+  ArmGenSumm <- CtArmGenes(cdt = c7, data = data2)
+  df1 <- ArmGenSumm %>% filter(arms %in% arm) # sort the spots based on the CNV signal found in the bulk data
+  genes <- df1[, "genes"]
+  rs <- df1[, "gene_row"]
+  df <- cdt_filt_sort(cdt = c7, genes = genes, gainLoss = gainLoss, rs = rs)
+  write.table(df, file = paste0(getwd(), "/CNVs_RankedBySimilarityToDNA.cdt"), sep = "\t", row.names = FALSE, quote = FALSE)
+
+  # add case CNV score histogram --
+  df <- caseCNVscore(cdt0 = c7, armGens = ArmGenSumm, arm = arm, gainLoss = gainLoss)
+  write.csv(df, file = paste0(getwd(), "/CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv"), row.names = FALSE)
+  ggplot(df, aes(x=CNVScore)) +
+    geom_histogram(binwidth = 0.04)
+  ggsave(paste0(getwd(), "/CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf"))
+
+  # run permutation of CNVscore to generate QQ plot: add on Oct-29
+  dat1 <- CNVpermut(m = 100, cdt0=c7, armGens=ArmGenSumm, arm=arm, gainLoss=gainLoss)
+  dat2 <- permutScore(sptScor=df, permuts=dat1)
+  write.csv(dat2[[1]], file = paste0(getwd(), "/caseCNV_summ.csv"), row.names = FALSE)
+  write.csv(dat2[[2]], file = paste0(getwd(), "/permutCNV_summ.csv"), row.names = FALSE)
+
+  #pemts <- read.csv("/Users/limin/limin_practice/Apps/DNAnexus/stmutCNVtest/scripts/analysis/spatial/grouped_spots/CNVs/cdt/permutCNV_summ.csv")
+  pemts <- dat2[[2]]
+  # Create downsampled data for QQ plot
+  downS <- c()
+  i = 50
+  for (n in 1:(nrow(pemts)/100)){
+    a <- pemts$PermutScore[i]
+    downS <- append(downS, a)
+    i = i + 100
+  }
+  data1 <- data.frame(df$CNVScore, downS)
+  colnames(data1) <- c("CNVscore", "PermutScore")
+  ggplot(data1, aes(x = PermutScore, y = CNVscore)) +
+    geom_point(shape = 21, colour = "lightgrey") +
+    geom_abline(slope = 1, intercept = 0, colour = "black", lty=2)
+  ggsave(paste0(getwd(), "/CNVs_RankedBySimilarityToDNA_QQplot.pdf"))
+
+  # generate quintile plot for loupe visualization
+  if (file.exists("../BarcodeLegend.csv")){ #grouping
+    df1 <- read.csv("../BarcodeLegend.csv")
+    dat1 <- read.csv("../grouped_spotSummary.csv")
+    quintilePlot(df=df, df1=df1, dat1=dat1)
+  }else{ # non-grouping
+    scores <- read.csv("./CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf")
+    all <- read.csv("../spotSummary.csv")
+    p1 <- all %>% filter(! spot %in% scores$Spot) # outs
+    p1$quintile <- rep("out", nrow(p1))
+    p1 <- p1[,c("barcode", "quintile")]
+    p2 <- all %>% filter(spot %in% scores$Spot)
+    p3 <- merge(p2, scores, by.x = "spot", by.y = "Spot")
+    p3 <- p3 %>% dplyr::select(c("barcode","Rank")) %>% arrange(Rank)
+    a = round(nrow(p3)/5)
+    quintile <- c(rep("Q1", a), rep("Q2", a),rep("Q3", a), rep("Q4", a),rep("Q5", nrow(p3)-4*a))
+    p3$quintile <- quintile
+    p3 <- p3[, c("barcode", "quintile")]
+    all <- rbind(p1, p3)
+    write.csv(all, file = paste0(getwd(), "/CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv"), row.names = FALSE)
+  }
+}
+
+# Sort CNV first by clusters and then total reads; generating clusters heatmap and chromosome heatmaps.
+cnvPlot2 <- function(c6=c6, data3=data3){
+  dat2 <- rbind(names(c6), c6) # add spot-name as first row
+  cdt2 <- data.frame(t(dat2))
+
+  #change the first colname to be "spot".
+  name <- colnames(cdt2)
+  colnames(cdt2) <- replace(name, name == "X1","spot" )
+
+  # spot summary file
+  data3$cluster <- stringr::str_remove_all(data3$cluster," ")
+  sum1 <- data3[, c("cluster", "spot", "TotalRDs")] %>% filter(spot %in% cdt2$spot)
+  cdt3 <- merge(sum1, cdt2, by = "spot")
+  cdt3$TotalRDs <- as.numeric(cdt3$TotalRDs)
+  cdt3$cluster <- str_replace(cdt3$cluster, "Cluster","")
+  cdt3$cluster <- as.numeric(cdt3$cluster)
+  cdt4 <- cdt3[order(cdt3[,2], -cdt3[,3]),] # sort first by cluster column, then by TotalRDs column-decreasing.
+  cdt5 <- data.frame(t(cdt4))
+  colnames(cdt5) <- cdt5[1,]
+  cdt6 <- cdt5[-c(1:3),]
+  df1 <- cdt[-c(1:2),2:3]
+  cdt7 <- cbind(df1, cdt6)
+  write.table(cdt7, file = paste0(getwd(),"/CNVs_OrganizedByGEcluster_UMIcount.cdt"), sep = "\t", row.names = FALSE, col.names = TRUE)
+
+  # 1.1 generating chromosome heatmap of sorted CNVs_OrganizedByGEcluster_UMIcount.cdt for annotating chr locations of cdt file.
+  df2 <- df1
+  df2[c("chr", "loc")] <- str_split_fixed(df2$NAME, ":",2)
+  df2 <- dplyr::count(df2,chr)
+  df2$seq <- rep(1, nrow(df2))
+  df2 <- df2[order(as.numeric(df2$chr), decreasing = FALSE),]
+  df2$chr <- as.numeric(df2$chr)
+
+  if (nrow(df2) %% 2 == 0){
+    a = nrow(df2)/2
+    colors <- rep(c("#5A5A5A", "#CCCCCC"), a)
+  } else{
+    a = (nrow(df2) - 1)/2
+    colors <- c("#5A5A5A", rep(c("#CCCCCC","#5A5A5A"), a))
+  }
+
+  ####
+  p1 <- paste0(getwd(), "/CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png")
+  ggplot(df2, aes(x = seq, y=n, fill = factor(chr))) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(values = colors)+
+    theme_bw() +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank()
+    )
+  ggsave(p1)
+
+  # 1.2 generating cluster heatmaps of sorted CNVs_OrganizedByGEcluster_UMIcount.cdt
+  NAME <- data.frame(t(cdt5[2,]))
+
+  ## cluster1...clusterN heatmap
+  dat1 <- dplyr::count(NAME, cluster)
+  dat1$seq <- rep(1, nrow(dat1))
+  dat1 <- dat1[order(as.numeric(dat1$cluster), decreasing = FALSE),]
+
+  if (nrow(dat1) %% 2 == 0){
+    a = nrow(dat1)/2
+    colors <- rep(c("#5A5A5A", "#CCCCCC"), a)
+  } else{
+    a = (nrow(dat1) - 1)/2
+    colors <- c("#5A5A5A", rep(c("#CCCCCC","#5A5A5A"), a))
+  }
+
+  ##
+  p2 <- paste0(getwd(), "/CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png")
+  ggplot(dat1, aes(x = seq, y=n, fill = cluster)) +
+    geom_bar(position = "stack", stat = "identity") +
+    scale_fill_manual(values = colors)+
+    theme_bw() +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank()
+    )
+  ggsave(p2)
+}
+
+# unrooted CNV clusters
+cnvPlot3 <- function(c7, ncluster, method1="canberra", method2 = "complete",...){
+  #1. prepare data
+  labelCdt <- c7[, c(1,2)]
+  c1 <- c7[,-c(1,2)]
+  rownames(c1) <- c7[,"NAME"]
+  c1 <- data.frame(apply(c1, 2, as.numeric)) # convert to numeric for heatmap
+  data <- t(c1)
+
+  #2. prepare color scheme
+  m <- min(data) # -5.312724
+  n <- max(data) # 2.993313
+  dat1 <- data[data>0]
+  # set up patient6 color scheme and breaks
+  breaks3 <- c(seq(m,0, length.out = 40),seq(0,n, length.out = 63)[-1])
+  myCol <- c(colorRampPalette(c("#0e11a4", "#1317e5"))(25),colorRampPalette(c("#3034ed", "white"))(15), colorRampPalette(c("white","#f62631"))(26),colorRampPalette(c("#f00915","#cd0712"))(35))
+  hm.colors3 = myCol
+
+  length(breaks3) = length(myCol) + 1
+
+  ##3. set dendrogram cluster color
+  # set the custom distance and clustering functions
+  distfunc <- function(x) dist(x, method = method1)
+  hclustfunc <- function(x) hclust(x, method = method2)
+
+  # perfrom clustring on rows
+  cl.row <- hclustfunc(distfunc(data))
+
+  # extract cluster assignments; i.e. k= 2(rows)
+  gr.row <- cutree(cl.row, ncluster, use_labels_not_values = TRUE)
+
+  # require(RColorBrewer); set color panel for each cluster
+  col1 <- brewer.pal(ncluster, "Set1")
+
+  dat1 <- data.frame(gr.row)
+  dat2 <- cbind(dat1, col1[gr.row])
+  cols <- as.matrix(dat2[,2])
+
+  ##4. heatmap
+  dd <- set(as.dendrogram(hclust(dist(data, method = method1), method = method2)), "branches_lwd", 0.2)
+  pdf(file = paste0(getwd(),"/CNVs_clustered_heatmap.pdf"))
+  hmp <- heatmap.2x(x= data,
+                    # color key
+                    key = FALSE,
+                    breaks = breaks3,
+                    col = hm.colors3,
+
+                    Colv = FALSE,
+                    Rowv = dd,
+                    dendrogram = "row",
+                    RowSideColors = cols,
+                    trace = "none",
+                    labCol = FALSE,
+                    labRow = rownames(data),
+                    offsetRow = 0,
+                    #colRow = rc,
+                    main = "Copy Number Variations",
+                    ylab = "Spots",
+                    xlab = "Genes",
+                    cexCol = 1,
+                    cexRow = 0.15,
+                    distfun = function(x) dist(x, method = method1),
+                    hclustfun = function(x) hclust(x, method = method2),
+                    lmat = rbind(c(4,0,3),c(0,2,1)),
+                    lhei = c(3,9),
+                    lwid = c(3,8,8),
+                    ...)
+  dev.off()
+  return(hmp)
+}
+
+
+#' Generate quintile plot for Loupe visualization
+#' @param df dataframe from CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv
+#' @param df1 dataframe from BarcodeLegend.csv
+#' @param dat1 dataframe from grouped_spotSummary.csv
+#'
+#' @return A quintile csv file for Loupe visualization
+#' @export
+#'
+#'
+
+quintilePlot <- function(df=df, df1=df1, dat1=dat1){
+  # case CNVscore
+  df <- df[,c("Rank", "Spot")] # CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf
+  colnames(df) <- c("Rank", "spot")
+
+  # CNVspots
+  data <- data.frame(matrix(nrow = 0, ncol = 3))
+  colnames(data) <- c("barcode","spot","Rank")
+  for (sp in df1$CNV_spot_name){
+    idx1 <- match(sp, df1$CNV_spot_name)
+    barcode <- df1[idx1,2]
+    barcode <- unlist(str_split(barcode,","))
+    spot <- rep(sp, length(barcode))
+
+    idx2 <- match(sp, df$spot)
+    rk <- df[idx2, "Rank"]
+    Rank <- rep(rk, length(barcode))
+
+    d <- data.frame(barcode, spot, Rank)
+    data <- rbind(data, d)
+  }
+
+  data[is.na(data)] <- 0
+  part1 <- data %>% filter(Rank == 0) # filter-out spots
+  part1$quintile <- rep("out", nrow(part1))
+  part2 <- data %>% filter(Rank != 0) # keep spots
+  part2 <- part2[order(part2$Rank),]
+  a = round(nrow(part2)/5)
+  quintile <- c(rep("Q1", a), rep("Q2", a),rep("Q3", a), rep("Q4", a),rep("Q5", nrow(part2)-4*a))
+  part2$quintile <- quintile
+
+  all <- rbind(part1, part2)
+  all <- all[, c("barcode", "quintile")]
+  write.csv(all, file = paste0(getwd(), "/CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv"), row.names = FALSE)
+}
+
+
+# Group spots based on number of genes
+genesGrouped <- function(data1, data2, data3, Tgenes = 500, NumSpt=8){
+  X <- data1[,1]
+  dat11 <- data1[,-1]
+
+  dat12 <- dat11[,(colSums(dat11 != 0) >= Tgenes)] # Not need for grouping
+  dat13 <- dat11[, (colSums(dat11 != 0) < Tgenes)] # used for grouping
+  barcodes <- str_replace(names(dat13), "\\.1", "-1")
+  colnames(dat13) <- barcodes
+
+  # graph-based
+  data2$Graph.based <- str_replace(data2$Graph.based, " ", "")
+  dat21 <- data2 %>% filter(Barcode %in% barcodes)
+  dat22 <- data2 %>% filter(!Barcode %in% barcodes)
+
+  # tissue_pos_list
+  colnames(data3) <- c("barcode", "in_tissue", "array_row", "array_col", "pxl_row_in_fullres", "pxl_col_in_fullres")
+
+  dat31 <- data3 %>% filter(barcode %in% barcodes) %>%
+    filter(in_tissue == 1)
+  dat31 <- dat31[, c("barcode","array_row","array_col")]
+
+  if(nrow(dat31) != ncol(dat13)){
+    flog.error("Number of spots in position list is NOT equal to number of for grouping.")
+    stop("Check the number of spots in tissue_position_list and filter_feature_bc.csv match!!")
+  }
+
+  # group spots from the same cluster
+  ## Initial df to store grouping info
+  dfinal <- data.frame(matrix(nrow = 0, ncol = 3))
+  colnames(dfinal) <- c("spot", "barcodes", "cluster") #
+  df0 <- NULL
+  newSptColName <- c()
+  n =1 # initial first spot
+
+  for (cl in unique(dat21$Graph.based)){ # loop each cluster
+    j = 1
+    df <- data.frame(matrix(nrow = 0, ncol = 2))
+    colnames(df) <- c("spot", "barcodes") #
+    sub <- dat21 %>% filter(Graph.based == cl) # one spot left in that cluster
+    dat211 <- dat13 %>% dplyr::select(sub$Barcode) # each cluster gene exp profile
+    bcs <- names(dat211)
+    numGen <- rowSums(dat211)
+    num1 <- sum(numGen != 0) # number of genes
+
+    if (nrow(sub) < 3 || num1 < Tgenes){
+      newSptColName <- append(newSptColName, bcs[1])
+      newSpt <- numGen
+      df0 <- cbind(df0, newSpt, row.names = NULL)
+      df[j, "spot"] <- paste0("spot", n)
+      df[j, "barcodes"] <- paste(sub$Barcode, collapse = ",")
+      n = n +1
+      j = j + 1
+    }else{
+      if (nrow(sub) <= NumSpt*NumSpt){
+        dat311 <- dat31 %>% filter(barcode %in% bcs)
+        dat311 <- dat311[with(dat311, order(array_row, array_col)),]
+        d00 <- dat13 %>% dplyr::select(all_of(dat311$barcode))
+        d10 <- rowSums(d00)
+        num2 <- sum(d10 != 0)
+
+        while (nrow(dat311) > 2 && num2 > Tgenes){ # conditional loop
+          dall <- c(0) # store distance, because distance of the same spot is 0.
+          p1 <- dat311[1, c("array_row", "array_col")]
+
+          for (i in 2:nrow(dat311)) {
+            p2 <- dat311[i, c("array_row", "array_col")]
+            a <- pointDistance(p1, p2, lonlat = FALSE)
+            dall <- append(dall, a)
+          }
+          dat312 <- cbind(dat311, dall, row.names = NULL)
+          dat312 <- dat312[order(dat312$dall), ] # get the distance of rest spots to the first spot
+
+          for (i in 2:nrow(dat312)){
+            subBcs <- dat312$barcode[1:i]
+            subG <- dat13 %>% dplyr::select(all_of(subBcs))
+            subNumGen <- rowSums(subG)
+            subNum1 <- sum(subNumGen != 0) # number of genes
+            if (subNum1 > Tgenes){
+              df0 <- cbind(df0, subNumGen)
+              newSptColName <- append(newSptColName, subBcs[1])
+              df[j, "spot"] <- paste0("spot", n)
+              df[j, "barcodes"] <- paste(subBcs, collapse = ",")
+              n = n + 1
+              j = j + 1
+              dat311 <- dat311 %>% filter(! barcode %in% subBcs)
+              dat311 <- dat311[with(dat311, order(array_row, array_col)),]
+              d0 <- dat13 %>% dplyr::select(all_of(dat311$barcode))
+              d1 <- rowSums(d0)
+              num2 <- sum(d1 != 0)
+              break
+            }
+          }
+        } # while loop
+
+        if (nrow(dat311) != 0){ # spots doesn't meet grouping requirements
+          b1 <- dat311$barcode
+          d2 <- dat13 %>% dplyr::select(all_of(dat311$barcode))
+          d3 <- rowSums(d2)
+          df0 <- cbind(df0, d3, row.names = NULL)
+          newSptColName <- append(newSptColName, b1[1])
+          df[j, "spot"] <- paste0("spot", n)
+          df[j, "barcodes"] <- paste(b1, collapse = ",")
+          n = n + 1
+          j = j + 1
+        }
+      }else{ # nrow(sub) > NumSpt==8*8 = 64 spots
+        dat311 <- dat31 %>% filter(barcode %in% bcs)
+        dat311 <- dat311[with(dat311, order(array_row, array_col)),]
+
+        if (nrow(dat311) < NumSpt*NumSpt){
+          b = nrow(dat311)
+        }else{
+          b = NumSpt*NumSpt
+        }
+        b1 <- dat311$barcode[1:b]
+        dat212 <- dat13 %>% dplyr::select(all_of(b1))
+        numGen <- rowSums(dat212)
+        num3 <- sum(numGen != 0)
+
+        num2 = num1
+        while (nrow(dat311) > 2 && num2 > Tgenes){ # conditional loop
+          if (num3 < Tgenes){
+            NumSpt = NumSpt + 1
+            b = NumSpt*NumSpt
+            b1 <- dat311$barcode[1:b]
+            dat212 <- dat13 %>% dplyr::select(all_of(b1))
+            numGen <- rowSums(dat212)
+            num3 <- sum(numGen != 0)
+
+            #flog.error(paste0("The new spots has fewer than ", Tgenes, " genes, Please increase the NumSpt value to add more spots."))
+            #stop("Include more spots for grouping.")
+          }else{
+            dall <- c(0) # store distance, because distance of the same spot is 0.
+            p1 <- dat311[1, c("array_row", "array_col")]
+            if (length(b1) < b){
+              c = nrow(b1)
+            }else{
+              c= b
+            }
+            dat312 <- dat311[c(1:c),]
+
+            for (i in 2:c) {
+              p2 <- dat312[i, c("array_row", "array_col")]
+              a <- pointDistance(p1, p2, lonlat = FALSE)
+              dall <- append(dall, a)
+            }
+            dat312 <- cbind(dat312, dall, row.names = NULL)
+            dat312 <- dat312[order(dat312$dall), ] # get the distance of rest spots to the first spot
+
+            for (i in 2:nrow(dat312)){
+              subBcs <- dat312$barcode[1:i]
+              subG <- dat13 %>% dplyr::select(all_of(subBcs))
+              subNumGen <- rowSums(subG)
+              subNum1 <- sum(subNumGen != 0) # number of genes
+              if (subNum1 > Tgenes){
+                df0 <- cbind(df0, subNumGen)
+                newSptColName <- append(newSptColName, subBcs[1])
+                df[j, "spot"] <- paste0("spot", n)
+                df[j, "barcodes"] <- paste(subBcs, collapse = ",")
+                n = n +1
+                j = j + 1
+                dat311 <- dat311 %>% filter(! barcode %in% subBcs)
+                d0 <- dat13 %>% dplyr::select(all_of(dat311$barcode))
+                d1 <- rowSums(d0)
+                num2 <- sum(d1 != 0)
+                break
+              }
+            }
+          }
+        } # while loop
+
+        if (nrow(dat311) != 0){ # spots doesn't meet grouping requirements
+          b1 <- dat311$barcode
+          d2 <- dat13 %>% dplyr::select(all_of(dat311$barcode))
+          d3 <- rowSums(d2)
+          df0 <- cbind(df0, d3, row.names = NULL)
+          newSptColName <- append(newSptColName, b1[1])
+          df[j, "spot"] <- paste0("spot", n)
+          df[j, "barcodes"] <- paste(b1, collapse = ",")
+          n = n + 1
+          j = j + 1
+        }
+      }
+    }
+
+    cluster <- rep(cl, nrow(df))
+    df$cluster <- cluster
+    dfinal <- rbind(dfinal, df)
+  } # for loop clusters
+
+  df0 <- data.frame(df0) # grouped spots gene expression
+  names <- str_replace(newSptColName, "-1", "\\.1")
+  colnames(df0) <- names
+
+  if(ncol(df0) != nrow(dfinal) || nrow(dfinal) != length(newSptColName)){
+    flog.error("The number of spots in grouped gene exp profile, in grouped summary, or new spots names don't match!")
+    stop("Grouping failed. Check your input.")
+  }
+
+  # Merge grouped and ungroup spots
+  ## merge exp profile
+  genExp <- cbind(df0, dat12, row.names = NULL)
+  genExp <- data.frame(X, genExp)
+
+  ## merge grouping info
+  unGrpBarcodes <- names(dat12)
+  unGrpBarcodes <- str_replace(unGrpBarcodes, "\\.1", "-1")
+  dat22 <- dat22[order(match(dat22$Barcode, unGrpBarcodes)),] # to sort the dat22 the same order as gene exp profile.
+  dat22$spot <- paste0("spot", (seq(nrow(dat22)) + nrow(dfinal)))
+  dat22 <- dat22 %>%
+    dplyr::select(spot, Barcode, Graph.based) %>%
+    rename_all(~names(dfinal))
+  groupSum <- rbind(dfinal, dat22) # spots summary information
+
+  ## tissue position list
+  bcd <- c(newSptColName, dat22$barcodes)
+  subTissue <- data3 %>% filter(barcode %in% bcd)
+
+  write.csv(genExp, file=paste0(getwd(), "/CNVs/filtered_feature_bc.csv"), row.names = FALSE)
+  write.csv(groupSum, file = paste0(getwd(), "/CNVs/BarcodeLegend.csv"), row.names = FALSE)
+  write.csv(subTissue, file = paste0(getwd(), "/CNVs/tissue_positions_list.csv"), row.names = FALSE)
 }
 
 
