@@ -1064,7 +1064,7 @@ cnvPlot1 <- function(c7 = c7, data2 = data2, arm = arm, gainLoss = gainLoss){
     dat1 <- read.csv("../grouped_spotSummary.csv")
     quintilePlot(df=df, df1=df1, dat1=dat1)
   }else{ # non-grouping
-    scores <- read.csv("./CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf")
+    scores <- read.csv("./CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv")
     all <- read.csv("../spotSummary.csv")
     p1 <- all %>% filter(! spot %in% scores$Spot) # outs
     p1$quintile <- rep("out", nrow(p1))
