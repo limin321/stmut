@@ -140,61 +140,60 @@ column 15: Details on which genes contain what mutations in which spots. <br />
 To call copy number variation from 10X spatial or single cell data. We strongly recommend to pull our docker image from Docker Hub [here](https://hub.docker.com/search?q=limin321) <br />
 
 We published 2 docker images, one for ubuntu(amd64), the other for MacOS (arm64). Once you pull the image,
-you need to prepare 4 input files in your working dir. The 4 inputs are filtered_feature_bc.csv, Graph-Based.csv, tissue_positions_list.csv, annotate.csv. Next, you can run the docker image following the example below.
+you need to prepare 4 input files in your working dir. The 4 inputs are filtered_feature_bc.csv, Graph-Based.csv, tissue_positions_list.csv, annotate.csv. Next, you can run the docker image following the example below. <br />
 We provide two grouping methods, either by genes (default method, with min 1k genes) or by reads (min 5k UMI)
 
 Example 1: group spots by number of genes when bulk tumor CNVs is available.
-`
-docker run --name grpGen -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh \
-    --filteredFeatureCSV ./filtered_feature_bc.csv \
-    --clusterCSV ./Graph-Based.csv \
-    --positionCSV ./tissue_positions_list.csv \
-    --TotalReads 1000 \
-    --numSpots 8 \
-    --group gene \
-    --annotate ./annotate.csv \
-    --arms 1p,3p,3q,4q,5q,8q,9q,10p,10q,11q,13p,13q,20p,20q,21q,14q,17q \
-    --gainLoss 1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,1,1,-1,1,1
-`
-Expected output format:
-analysis % tree
-.
-└── spatial
-    ├── grouped_spots
-    │   ├── BarcodeLegend.csv # details on which spots are grouped into a new spot
-    │   ├── cdt
-    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount.cdt
-    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png
-    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png
-    │   │   ├── CNVs_RankedBySimilarityToDNA.cdt
-    │   │   ├── CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv
-    │   │   ├── CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf
-    │   │   ├── CNVs_RankedBySimilarityToDNA_QQplot.pdf
-    │   │   ├── CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv
-    │   │   ├── CNVs_clustered.Rdata
-    │   │   └── CNVs_clustered_heatmap.pdf
-    │   ├── filtered_feature_bc.csv
-    │   └── grouped_spotSummary.csv
+
+```docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh 
+    --filteredFeatureCSV ./filtered_feature_bc.csv  
+    --clusterCSV ./Graph-Based.csv  
+    --positionCSV ./tissue_positions_list.csv  
+    --TotalReads 1000  
+    --numSpots 8  
+    --group gene  
+    --annotate ./annotate.csv  
+    --arms 1p,3p,3q,4q,5q,8q,9q,10p,10q,11q,13p,13q,20p,20q,21q,14q,17q  
+    --gainLoss 1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,1,1,-1,1,1```
+
+Expected output format: <br />
+analysis % tree <br />
+.<br />
+└── spatial <br />
+    ├── grouped_spots <br />
+    │   ├── BarcodeLegend.csv # details on which spots are grouped into a new spot <br />
+    │   ├── cdt <br />
+    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount.cdt <br />
+    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png <br />
+    │   │   ├── CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png <br />
+    │   │   ├── CNVs_RankedBySimilarityToDNA.cdt <br />
+    │   │   ├── CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv <br />
+    │   │   ├── CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf <br />
+    │   │   ├── CNVs_RankedBySimilarityToDNA_QQplot.pdf <br />
+    │   │   ├── CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv <br />
+    │   │   ├── CNVs_clustered.Rdata <br />
+    │   │   └── CNVs_clustered_heatmap.pdf <br />
+    │   ├── filtered_feature_bc.csv <br />
+    │   └── grouped_spotSummary.csv <br />
     └── spotSummary.csv
 
 4 directories, 14 files
 
-We provide three sets of outputs:
-CNVs_OrganizedByGEcluster_UMIcount: the three files are used to generate Fig.4 included in our paper.
-CNVs_RankedBySimilarityToDNA: this set is optional. Only when you provide bulk tumor CNVs data, these outputs will be generated.
-CNVs_clustered: we provide a dendrogram of CNVs info. The details are saved in the .Rdata which you can extract for further exploring.
+We provide three sets of outputs: <br />
+CNVs_OrganizedByGEcluster_UMIcount: the three files are used to generate Fig.4 included in our paper. <br />
+CNVs_RankedBySimilarityToDNA: this set is optional. Only when you provide bulk tumor CNVs data, these outputs will be generated. <br />
+CNVs_clustered: we provide a dendrogram of CNVs info. The details are saved in the .Rdata which you can extract for further exploring. <br />
 
 
-
-Example 2: group spots by number of reads without bulk tumor CNVs available
+Example 2: group spots by number of reads without bulk tumor CNVs available <br />
 `
-docker run --name grpGen1 -v <your_local_dir>:/home/stmut stmutcnv:0.0.1 bash /usr/local/bin/stmutcnv.sh \
-    --filteredFeatureCSV ./filtered_feature_bc.csv \
-    --clusterCSV ./Graph-Based.csv \
-    --positionCSV ./tissue_positions_list.csv \
-    --TotalReads 1000 \
-    --numSpots 8 \
-    --group gene \
+docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh 
+    --filteredFeatureCSV ./filtered_feature_bc.csv 
+    --clusterCSV ./Graph-Based.csv 
+    --positionCSV ./tissue_positions_list.csv 
+    --TotalReads 1000 
+    --numSpots 8 
+    --group gene 
     --annotate ./annotate.csv
 `
 
