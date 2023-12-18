@@ -1266,8 +1266,8 @@ quintilePlot <- function(df=df, df1=df1, dat1=dat1){
   # CNVspots
   data <- data.frame(matrix(nrow = 0, ncol = 3))
   colnames(data) <- c("barcode","spot","Rank")
-  for (sp in df1$CNV_spot_name){
-    idx1 <- match(sp, df1$CNV_spot_name)
+  for (sp in df1$spot){
+    idx1 <- match(sp, df1$spot)
     barcode <- df1[idx1,2]
     barcode <- unlist(str_split(barcode,","))
     spot <- rep(sp, length(barcode))
