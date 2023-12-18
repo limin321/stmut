@@ -50,14 +50,13 @@ library(stmut)
 
 #### Notes
 
--   Bash scripts displayed in `echo` command are for your reference when
-    you run your own data. <br />
--   This package relies on previously sequenced DNAseq data, for
-    example, exome data. That is, you need to have your bulk CNVs,
-    germline SNPs, and somatic mutations list ready before using this
-    package. <br />
--   Prepare the following 5 files from the spaceranger pipeline output:
-    <br />
+- Bash scripts displayed in `echo` command are for your reference when
+  you run your own data. <br />
+- This package relies on previously sequenced DNAseq data, for example,
+  exome data. That is, you need to have your bulk CNVs, germline SNPs,
+  and somatic mutations list ready before using this package. <br />
+- Prepare the following 5 files from the spaceranger pipeline output:
+  <br />
 
 1.  filtered_feature_bc.csv <br />
 2.  Graph-Based.csv, this file is exported from 10X Loupe Browser as
@@ -71,10 +70,10 @@ library(stmut)
 
 ------------------------------------------------------------------------
 
--   spotIndex generation: you can also run splitSpot() to generate an
-    individual spot barcode and gene expression file, and each file is
-    named numerically. For example, the first spot is spot000.txt, the
-    next is spot001.txt and so forth. <br />
+- spotIndex generation: you can also run splitSpot() to generate an
+  individual spot barcode and gene expression file, and each file is
+  named numerically. For example, the first spot is spot000.txt, the
+  next is spot001.txt and so forth. <br />
 
 ``` r
 file <- read.csv("./Rep1/Data/SpacerangerOutput/CloupeFilesManualAlignment/filtered_feature_bc.csv")
@@ -85,9 +84,9 @@ output of splitSpot(). spotIndex contains individual spot barcode txt
 file; txt directory contains individual spot gene expression profile.
 ![](./FigTableScripts/Images/splitSpot.png)
 
--   spotBam generation: the spot bam is generated as suggested by
-    [10xGenomics subset-bam](https://github.com/10XGenomics/subset-bam)
-    <br />
+- spotBam generation: the spot bam is generated as suggested by
+  [10xGenomics subset-bam](https://github.com/10XGenomics/subset-bam)
+  <br />
 
 ``` bash
 echo "subset-bam_linux --bam possorted_genome_bam.bam --cell-barcodes spot000.txt --out-bam spot000.bam"
@@ -96,34 +95,33 @@ echo "samtools index spot000.bam"
 #> samtools index spot000.bam
 ```
 
--   Count point mutations for each spot: we count the number of ref and
-    mut reads using Mpileup_RNA.pl script [found
-    here](https://github.com/limin321/stmut/tree/master/FigTableScripts).
-    This scripts takes 3 inputs as shown in the following example. The
-    first is the somatic mutation list; the second is the spot bam file;
-    the third is the reference fasta file, which should be the same used
-    either SpaceRanger or CellRanger. Make sure `samtools` is installed
-    before running: <br />
+- Count point mutations for each spot: we count the number of ref and
+  mut reads using Mpileup_RNA.pl script [found
+  here](https://github.com/limin321/stmut/tree/master/FigTableScripts).
+  This scripts takes 3 inputs as shown in the following example. The
+  first is the somatic mutation list; the second is the spot bam file;
+  the third is the reference fasta file, which should be the same used
+  either SpaceRanger or CellRanger. Make sure `samtools` is installed
+  before running: <br />
 
 ``` bash
 echo "perl Mpileup_RNA.pl Patient4SomaticSNPs.txt spot000/spot000.bam ./refdata-gex-GRCh38-2020-A/fasta/genome.fa"
 #> perl Mpileup_RNA.pl Patient4SomaticSNPs.txt spot000/spot000.bam ./refdata-gex-GRCh38-2020-A/fasta/genome.fa
 ```
 
--   [spaPointMutation](https://github.com/limin321/stmut/blob/master/FigTableScripts/FigTables.md#figure-1-figure-2a)
-    creates a folder in your working directory including 8 files related
-    to spot point mutations exploration. The AllSptTumPropsed.csv file
-    contains a list of point mutations for visualization on the 10X
-    Loupe Browser. The color scheme can be customized in the 10X Loupe
-    Browser. The figures generated should be similar to Figure 1 in our
-    manuscript. Make sure the format of your input files matches the
-    examples provided by the package to ensure the smooth running of the
-    codes. <br />
+- [spaPointMutation](https://github.com/limin321/stmut/blob/master/FigTableScripts/FigTables.md#figure-1-figure-2a)
+  creates a folder in your working directory including 8 files related
+  to spot point mutations exploration. The AllSptTumPropsed.csv file
+  contains a list of point mutations for visualization on the 10X Loupe
+  Browser. The color scheme can be customized in the 10X Loupe Browser.
+  The figures generated should be similar to Figure 1 in our manuscript.
+  Make sure the format of your input files matches the examples provided
+  by the package to ensure the smooth running of the codes. <br />
 
 #### Examples of running individual functions
 
-The following are basic examples on how to run each individual function:
-1. sptBClstRds()
+The following are basic examples on how to run each individual
+function: 1. sptBClstRds()
 
 ``` r
 library(stmut)
@@ -253,11 +251,11 @@ Mut read counts (sum of col 7 and col 8) <br /> column 10: The number (
 \< 10) in this column indicates how many mutant reads in a spot. For
 example, G9 means there are 9 mutant reads in that spot. However, G10
 means there are10 or more mutant reads in the spot. <br /> column 11:
-Proportion of # of mutant reads to Total reads (col8/col4) <br /> column
-12: Proportion of # of mutant reads to sum of ref and mut reads
+Proportion of \# of mutant reads to Total reads (col8/col4) <br />
+column 12: Proportion of \# of mutant reads to sum of ref and mut reads
 (col8/col9) <br /> column 13: A binary column, when the spot has \> 1
 mutant read, it is 1, otherwise, it is 0. <br /> column 14: A score
-calculated based on the # of ref and mutant read counts. The higher the
+calculated based on the \# of ref and mutant read counts. The higher the
 score is, the more likely it is a tumor spot. The table is sorted by
 this column. <br /> column 15: Details on which genes contain what
 mutations in which spots. <br />
@@ -265,6 +263,56 @@ mutations in which spots. <br />
 ## II. Copy Number Variation Detection
 
 ------------------------------------------------------------------------
+
+### Docker Image download
+
+To call copy number variation from 10X spatial or single cell data. We
+strongly recommend to pull our docker image from Docker Hub
+[here](https://hub.docker.com/search?q=limin321) <br />
+
+We published 2 docker images, one for ubuntu(amd64), the other for MacOS
+(arm64). Once you pull the image, you need to prepare 4 input files in
+your working dir. The 4 inputs are filtered_feature_bc.csv,
+Graph-Based.csv, tissue_positions_list.csv, annotate.csv. Next, you can
+run the docker image following the example below. <br /> We provide two
+grouping methods, either by genes (default method, with min 1k genes) or
+by reads (min 5k UMI)
+
+Example 1: group spots by number of genes when bulk tumor CNVs is
+available.
+
+`docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh      --filteredFeatureCSV ./filtered_feature_bc.csv       --clusterCSV ./Graph-Based.csv       --positionCSV ./tissue_positions_list.csv       --TotalReads 1000       --numSpots 8       --group gene       --annotate ./annotate.csv       --arms 1p,3p,3q,4q,5q,8q,9q,10p,10q,11q,13p,13q,20p,20q,21q,14q,17q       --gainLoss 1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,1,1,-1,1,1`
+
+Expected output format: <br /> analysis % tree <br /> .<br /> └──
+spatial <br /> ├── grouped_spots <br /> │   ├── BarcodeLegend.csv \#
+details on which spots are grouped into a new spot <br /> │   ├── cdt
+<br /> │   │   ├── CNVs_OrganizedByGEcluster_UMIcount.cdt <br /> │   │  
+├── CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png <br /> │  
+│   ├── CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png <br />
+│   │   ├── CNVs_RankedBySimilarityToDNA.cdt <br /> │   │   ├──
+CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv <br /> │   │   ├──
+CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf <br /> │   │   ├──
+CNVs_RankedBySimilarityToDNA_QQplot.pdf <br /> │   │   ├──
+CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv <br /> │   │   ├──
+CNVs_clustered.Rdata <br /> │   │   └── CNVs_clustered_heatmap.pdf
+<br /> │   ├── filtered_feature_bc.csv <br /> │   └──
+grouped_spotSummary.csv <br /> └── spotSummary.csv
+
+4 directories, 14 files
+
+We provide three sets of outputs: <br />
+CNVs_OrganizedByGEcluster_UMIcount: the three files are used to generate
+Fig.4 included in our paper. <br /> CNVs_RankedBySimilarityToDNA: this
+set is optional. Only when you provide bulk tumor CNVs data, these
+outputs will be generated. <br /> CNVs_clustered: we provide a
+dendrogram of CNVs info. The details are saved in the .Rdata which you
+can extract for further exploring. <br />
+
+Example 2: group spots by number of reads without bulk tumor CNVs
+available <br />
+`docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh      --filteredFeatureCSV ./filtered_feature_bc.csv      --clusterCSV ./Graph-Based.csv      --positionCSV ./tissue_positions_list.csv      --TotalReads 1000      --numSpots 8      --group gene      --annotate ./annotate.csv`
+
+### Examples of R functions
 
 accStartCNR_CNS() and bulkCNVs() functions are used to generate
 arm-level bulk CNVs plot. <br /> wtArmMedianOne(), CtArmGenes() and
@@ -383,8 +431,8 @@ cnvs(data1 = data1, cdt = cdt0, data2 = data2, arm = arm, gainLoss = gainLoss) #
 accumStartPos() and bulkLOHplot() functions are for generating bulk
 DNAseq allelic imbalance plots.
 
--   Generate ‘samtools mpileup’ input of counting major- and minor-
-    reads per mutant of each spot.
+- Generate ‘samtools mpileup’ input of counting major- and minor- reads
+  per mutant of each spot.
 
 ``` r
 # Tumor SNPs list
@@ -397,21 +445,22 @@ lohMpileupInput(data1 = data1) # the LOHmpileupInput.txt file will generate in y
 In our cases, the patient4_hg38_SNPs.txt and patient6_hg38_SNPs.txt
 files, which can be found
 [here](https://github.com/limin321/stmut/blob/master/VisualizingSomaticAlterations/DNAseqResourceFiles/),
-are used to count the # of major and minor alleles of each spot in
+are used to count the \# of major and minor alleles of each spot in
 patient4 and patient6.
 
--   Counting the # of majorAllele- and minorAllele- reads per mutant of
-    each spot. The script Mpileup_RNA_alleImbalance.pl can be downloaded
-    [here](https://github.com/limin321/stmut/tree/master/FigTableScripts)
+- Counting the \# of majorAllele- and minorAllele- reads per mutant of
+  each spot. The script Mpileup_RNA_alleImbalance.pl can be downloaded
+  [here](https://github.com/limin321/stmut/tree/master/FigTableScripts)
 
 ``` bash
+
 echo "perl ./Mpileup_RNA_alleImbalance.pl ./LOHmpileupInput.txt spot000/spot000.bam"
 
 #> perl ./Mpileup_RNA_alleImbalance.pl ./LOHmpileupInput.txt spot000/spot000.bam
 ```
 
--   Generate a summary table of all spot major/minor allele counts of
-    all spots.
+- Generate a summary table of all spot major/minor allele counts of all
+  spots.
 
 ``` r
 files <- c("/Volumes/Bastian/Limin/Ji_data/Patient6/SpatialTranscriptomic/Rep1/LOH/allelicImbalance2/mpileupOutput/spot0001/MpileupOutput_RNA.txt","/Volumes/Bastian/Limin/Ji_data/Patient6/SpatialTranscriptomic/Rep1/LOH/allelicImbalance2/mpileupOutput/spot0002/MpileupOutput_RNA.txt")
@@ -426,6 +475,44 @@ The output is 2 csv files: SNPallMajorAlleleCount.csv and
 SNPMajorAlleleCount.csv. The latter is used to generate Figures in the
 manuscript. <br />
 
--   Scripts generating the allelic imbalance figures(Figure 4 and Figure
-    S6) in the manuscript can be found
-    [here](https://github.com/limin321/stmut/blob/master/FigTableScripts/FigTables.md#bulk-dnaseq-allelic-imbalance)
+- Scripts generating the allelic imbalance figures(Figure 4 and Figure
+  S6) in the manuscript can be found
+  [here](https://github.com/limin321/stmut/blob/master/FigTableScripts/FigTables.md#bulk-dnaseq-allelic-imbalance)
+
+``` r
+sessionInfo()
+#> R version 4.1.1 (2021-08-10)
+#> Platform: x86_64-apple-darwin17.0 (64-bit)
+#> Running under: macOS Big Sur 10.16
+#> 
+#> Matrix products: default
+#> BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+#> 
+#> locale:
+#> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] dplyr_1.0.10     stmut_0.0.0.9000
+#> 
+#> loaded via a namespace (and not attached):
+#>  [1] Rcpp_1.0.9           formatR_1.12         pillar_1.8.1        
+#>  [4] compiler_4.1.1       futile.logger_1.4.3  futile.options_1.0.1
+#>  [7] tools_4.1.1          digest_0.6.29        lattice_0.20-45     
+#> [10] evaluate_0.16        lifecycle_1.0.3      tibble_3.1.8        
+#> [13] gtable_0.3.1         pkgconfig_2.0.3      rlang_1.1.1         
+#> [16] cli_3.4.1            DBI_1.1.3            rstudioapi_0.14     
+#> [19] parallel_4.1.1       yaml_2.3.5           xfun_0.32           
+#> [22] fastmap_1.1.0        terra_1.6-17         raster_3.6-3        
+#> [25] stringr_1.5.0        knitr_1.40           generics_0.1.3      
+#> [28] vctrs_0.6.2          grid_4.1.1           tidyselect_1.2.0    
+#> [31] glue_1.6.2           R6_2.5.1             fansi_1.0.3         
+#> [34] rmarkdown_2.16       sp_1.5-0             ggplot2_3.4.2       
+#> [37] lambda.r_1.2.4       magrittr_2.0.3       codetools_0.2-18    
+#> [40] matrixStats_0.62.0   scales_1.2.1         htmltools_0.5.3     
+#> [43] assertthat_0.2.1     colorspace_2.0-3     utf8_1.2.2          
+#> [46] stringi_1.7.8        munsell_0.5.0
+```
