@@ -804,9 +804,23 @@ spotsGrouped <- function(df1, Treads = 5000, NumSpt = 8, data, locpath) {
   write.csv(df3, file = paste0(path, "/CNVs/BarcodeLegend.csv"), row.names = FALSE)
 }
 
-#' data1 Original filtered_feature_bc.csv
-#' locpath The tissue_positions_list.csv
+
+
+#' Title: Grouping spots based on the number of reads.
+#'
+#' @param data1 Original filtered_feature_bc.csv
+#' @param data2 grouped_spotSummary.csv
+#' @param Treads Minimum number of reads in a new spot
+#' @param NumSpt Number of spots used for grouping
+#' @param locpath The tissue_positions_list.csv
+#'
+#' @return Grouped spots files as new input
+#' @export
+#'
 readsGrouped <- function(data1,data2,Treads = 8000, NumSpt=8,locpath){
+  TotalRDs <- NULL
+  spot <- NULL
+
   dir.create("./grouped_spots/")
   setwd(paste0("grouped_spots/"))
 
@@ -882,6 +896,10 @@ readsGrouped <- function(data1,data2,Treads = 8000, NumSpt=8,locpath){
 #' @param tumorclusters customer-defined tumor clusters.
 #'
 #' @importFrom stats median
+#' @importFrom grDevices colorRampPalette dev.off pdf
+#' @importFrom stats as.dendrogram  dist hclust
+#' @importFrom dendextend cutree
+#' @importFrom graphics hist
 #'
 #' @return a cdt file for JavaTree vies or R visualization.
 #' @export
@@ -941,6 +959,8 @@ cnvsorted <- function(data1, cdt, data2, arm, gainLoss, tumorclusters) {
 #' @param gainLoss Optional. If you don't have DNAseq data. gainLoss is not required. CNVs signals corresponding to arms, -1 is loss, +1 is gain
 #' @param method1 The distance measure to be used. Check ?dist to see more options.
 #' @param method2 The agglomeration method to be used. Check ?hclust to see more options
+#' @param ncluster By default, it generates 4 clusters heatmap
+#' @param ... Inherit all arguments from heatmap.2x
 #'
 #' @return Five files: CNVs_clustered_heatmap.pdf,CNVs_OrganizedByGEcluster_UMIcount_ClusterTemplate.png,CNVs_OrganizedByGEcluster_UMIcount_ChromosomeTemplate.png,CNVs_OrganizedByGEcluster_UMIcount.cdt, CNVs_RankedBySimilarityToDNA.cdt.
 #' the CNVs_RankedBySimilarityToDNA.cdt will be generated only when bulk tumor DNA data is provided.
@@ -1015,8 +1035,26 @@ cnvs <- function(data1, cdt, data2, data3,ncluster=4, arm=c(), gainLoss=c(),meth
 }
 
 
-# DNA bulk data is provided CNVplot1
+#' Title DNA bulk data is provided CNVplot1, output plot based on bulk DNA-- CNV data.
+#'
+#' @param c7 Internal CNVmatrix
+#' @param data2 The summary.txt file in the wtcnr folder
+#' @param arm A list of arms with CNV changes, ex: 3p,3q,5p,7q,...
+#' @param gainLoss A list of numeric value indicate CNV gain or loss, ex: -1,1,1,-1,...
+#'
+#' @return output 5 files: CNVs_RankedBySimilarityToDNA.cdt,CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.csv,
+#' CNVs_RankedBySimilarityToDNA_CNVscoreHistogram.pdf,CNVs_RankedBySimilarityToDNA_QQplot.pdf,
+#' CNVs_RankedbySimilaritytoDNA_Quintiles4Loupe.csv
+#' @export
+#'
 cnvPlot1 <- function(c7 = c7, data2 = data2, arm = arm, gainLoss = gainLoss){
+  arms <- NULL
+  CNVScore <- NULL
+  PermutScore <- NULL
+  CNVscore <- NULL
+  spot <- NULL
+  Rank <- NULL
+
   if (length(arm) != length(gainLoss)) {
     stop("arm and gainLoss should have the same length!")
   }
@@ -1081,8 +1119,20 @@ cnvPlot1 <- function(c7 = c7, data2 = data2, arm = arm, gainLoss = gainLoss){
   }
 }
 
-# Sort CNV first by clusters and then total reads; generating clusters heatmap and chromosome heatmaps.
+#' Title: Sort CNV first by clusters and then total reads; generating clusters heatmap and chromosome heatmaps.
+#'
+#' @param c6 Internal CNV matrix
+#' @param data3 grouped_spotSummary.csv file
+#'
+#' @return Two files:CNVs_OrganizedByGEcluster_UMIcount.cdt and CNVs_OrganizedByGEcluster_UMIcount.pdf
+#' @export
+#'
 cnvPlot2 <- function(c6=c6, data3=data3){
+  spot <- NULL
+  cdt <- NULL
+  chr <- NULL
+  cluster <- NULL
+
   dat2 <- rbind(names(c6), c6) # add spot-name as first row
   cdt2 <- data.frame(t(dat2))
 
@@ -1177,7 +1227,23 @@ cnvPlot2 <- function(c6=c6, data3=data3){
 }
 
 # unrooted CNV clusters
+
+#' Title
+#'
+#' @param c7 Preprocessed cdt0, internal argument
+#' @param ncluster Number of cluster you want to generate
+#' @param method1 Inherit from heatmap.2x
+#' @param method2 Inherit from heatmap.2x
+#' @param ... Any arguments from heatmap.2x
+#' @import heatmap.2x
+#' @importFrom dendextend cutree
+#' @importFrom RColorBrewer brewer.pal
+#'
+#' @return Output 2 files: CNVs_clustered.Rdata and CNVs_clustered_heatmap.pdf
+#' @export
+#'
 cnvPlot3 <- function(c7, ncluster, method1="canberra", method2 = "complete",...){
+  set <- NULL
   #1. prepare data
   labelCdt <- c7[, c(1,2)]
   c1 <- c7[,-c(1,2)]
@@ -1205,7 +1271,7 @@ cnvPlot3 <- function(c7, ncluster, method1="canberra", method2 = "complete",...)
   cl.row <- hclustfunc(distfunc(data))
 
   # extract cluster assignments; i.e. k= 2(rows)
-  gr.row <- cutree(cl.row, ncluster, use_labels_not_values = TRUE)
+  gr.row <- dendextend::cutree(cl.row, ncluster, use_labels_not_values = TRUE)
 
   # require(RColorBrewer); set color panel for each cluster
   col1 <- brewer.pal(ncluster, "Set1")
@@ -1297,6 +1363,12 @@ quintilePlot <- function(df=df, df1=df1, dat1=dat1){
 
 # Group spots based on number of genes
 genesGrouped <- function(data1, data2, data3, Tgenes = 500, NumSpt=8){
+  Barcode <- NULL
+  barcode <- NULL
+  in_tissue <- NULL
+  Graph.based <- NULL
+  spot <- NULL
+
   X <- data1[,1]
   dat11 <- data1[,-1]
 
