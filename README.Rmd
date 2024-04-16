@@ -77,33 +77,74 @@ echo "perl Mpileup_RNA.pl Patient4SomaticSNPs.txt spot000/spot000.bam ./refdata-
 To call copy number variation from 10X spatial or single cell data. We strongly recommend to pull our docker image from Docker Hub [here](https://hub.docker.com/search?q=limin321) <br />
 
 We published 2 docker images, one for ubuntu(amd64), the other for MacOS (arm64). Once you pull the image,
-you need to prepare 4 input files in your working dir. The 4 inputs are filtered_feature_bc.csv, Graph-Based.csv, tissue_positions_list.csv, annotate.csv. Next, you can run the docker image following the example below. <br />
-We provide two grouping methods, either by genes (default method, with min 1k genes) or by reads (min 5k UMI)
+you need to prepare 4 input files in your working dir. The 4 inputs are 
+1) filtered_feature_bc.csv, 
+2) Graph-Based.csv, 
+3) tissue_positions_list.csv, 
+4) annotate.csv. this file should look like below <br /> 
+![](./FigTableScripts/Images/annotate.png)
+
+The above file 1) to 3) are spaceranger output. File 2) is exported from the Loupe browser as shown above. File 4) is a two column csv file as shown above.
+
+After finishing preparing the 4 input files. Time to call CNVs using docker image following the examples below. <br />
+
+The docker image is adapted to call CNVs from 2 spatial platfroms, 10X and StereoSeq. 
 
 ### 10X Platform
-```docker run --rm  -v ./stmutCNVtest/scripts/:/home/stmut/ stmutcnv:latest bash /usr/local/bin/stmutcnv.sh cnv --filteredFeatureCSV ./stereo/filtered_feature_bc.csv --clusterCSV ./stereo/graph_based.csv --positionCSV ./stereo/tissue_positions_list.csv --group gene --annotate ./stereo/annotate.csv --TotalReads 1000 --numSpots 8```
+If your data is from 10X, you can directly follow the below code.
+```
+docker run --rm  -v ./stmutCNVtest/scripts/:/home/stmut/ stmutcnv:latest bash /usr/local/bin/stmutcnv.sh cnv \
+    --filteredFeatureCSV ./stereo/filtered_feature_bc.csv \
+    --clusterCSV ./stereo/graph_based.csv \
+    --positionCSV ./stereo/tissue_positions_list.csv \
+    --group gene \
+    --annotate ./stereo/annotate.csv \
+    --TotalReads 1000 \
+    --numSpots 8
+```
+We provide two grouping methods, either by genes (default method, with min 1k genes per new spot) or by reads (min 5k UMI per new spot)
 
 ### StereoSeq Platform
-First, run the following code to generate mimic input files similar to 10X platform.
-```docker run --rm  -v ./stmutCNVtest/scripts/:/home/stmut/ stmutcnv:latest bash /usr/local/bin/stmutcnv.sh gemconvert --gemfile ./stereo/C03139F1.tissue.gem.gz --binsize 200 --outpath ./stereo/```
+If your data is from StereoSeq, you need to do some extra work. Here is the step by step instructions.
 
-Second, repeat the same code as in 10X Platform after tumor, non-tumor clusters annotation.
+###### First, run the following code to generate input files similar to 10X platform.
+```
+docker run --rm  -v ./stmutCNVtest/scripts/:/home/stmut/ stmutcnv:latest bash /usr/local/bin/stmutcnv.sh gemconvert \
+    --gemfile ./stereo/<chipID>.tissue.gem.gz \ # the output from stereo SAW pipeline.
+    --binsize 200 \ # the bin_size, bin200 is assumed to similar size as 10X visium spot size.
+    --outpath ./stereo/ # path to save the outputs.
+```
+It takes 3 arguments: the tissue.gem.gz; the bin_size, the output dir you want to store the output.
 
-Example 1: group spots by number of genes when bulk tumor CNVs is available.
+Output 4 files. <br />
+    1) filtered_feature_bc.csv <br />
+    2) graph_based.csv <br />
+    3) tissue_positions_list.csv <br />
+    4) bin200_seurat.RDS <br />
+The counterfeit barcodes in each file were created to mimic the ones from 10X platform 
+to keep consistent data format for analysis. The real corresponding coordinates are stored 
+in the meta data of the rds. With this rds, you also need to perform clustering analysis, and annotate each cluster so as to create a annotate.csv file to run CNV analysis in the next step.
 
-```docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh 
-    --filteredFeatureCSV ./filtered_feature_bc.csv  
-    --clusterCSV ./Graph-Based.csv  
-    --positionCSV ./tissue_positions_list.csv  
-    --TotalReads 1000  
-    --numSpots 8  
-    --group gene  
-    --annotate ./annotate.csv  
-    --arms 1p,3p,3q,4q,5q,8q,9q,10p,10q,11q,13p,13q,20p,20q,21q,14q,17q  
-    --gainLoss 1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,1,1,-1,1,1```
+###### Second, repeat the same code as shown in the 10X Platform.
+
+
+#### More cases of calling CNVs.
+Case 1: group spots by number of genes when bulk tumor CNVs is available.
+
+```
+docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh cnv
+    --filteredFeatureCSV ./filtered_feature_bc.csv 
+    --clusterCSV ./Graph-Based.csv \
+    --positionCSV ./tissue_positions_list.csv \
+    --TotalReads 1000 \
+    --numSpots 8 \
+    --group gene \  
+    --annotate ./annotate.csv \ 
+    --arms 1p,3p,3q,4q,5q,8q,9q,10p,10q,11q,13p,13q,20p,20q,21q,14q,17q \
+    --gainLoss 1,-1,1,-1,-1,1,1,-1,-1,1,-1,-1,1,1,-1,1,1
+```
 
 Expected output format: <br />
-analysis % tree <br />
 .<br />
 └── spatial <br />
     ├── grouped_spots <br />
@@ -131,9 +172,10 @@ CNVs_RankedBySimilarityToDNA: this set is optional. Only when you provide bulk t
 CNVs_clustered: we provide a dendrogram of CNVs info. The details are saved in the .Rdata which you can extract for further exploring. <br />
 
 
-Example 2: group spots by number of reads without bulk tumor CNVs available <br />
-`
-docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh 
+Case 2: group spots by number of reads without bulk tumor CNVs available <br />
+
+```
+docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /usr/local/bin/stmutcnv.sh cnv
     --filteredFeatureCSV ./filtered_feature_bc.csv 
     --clusterCSV ./Graph-Based.csv 
     --positionCSV ./tissue_positions_list.csv 
@@ -141,7 +183,8 @@ docker run -v <your_local_dir>:/home/stmut limin321/stmutcnv_arm64:0.0.1 bash /u
     --numSpots 8 
     --group gene 
     --annotate ./annotate.csv
-`
+```
+
 
 
 ## III. Allelic Imbalance 
